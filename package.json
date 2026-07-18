@@ -1,0 +1,10 @@
+{
+  "name": "linkedin-profile-extractor",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Chrome extension that extracts structured profile data (name, headline, location, about, experience, featured, activity) from the currently open LinkedIn profile page.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}

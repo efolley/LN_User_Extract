@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Profile Extractor",
+  "version": "1.1.0",
+  "description": "Extract name, headline, location, about, experience, featured, and activity from the current LinkedIn profile page.",
+  "action": {
+    "default_title": "Extract profile data",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://www.linkedin.com/*"]
+}

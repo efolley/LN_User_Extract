@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile Extractor</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Profile Extractor</h1>
+        <p>Extract profile info from the current LinkedIn page.</p>
+      </header>
+
+      <button id="aboutBtn">Show full About section</button>
+      <button id="experienceBtn">Show full Experience section</button>
+      <button id="featuredBtn">Show last 3 Featured items</button>
+      <button id="activityBtn">Show last 3 Activity items</button>
+      <button id="extractBtn" class="primary">Extract Profile Info</button>
+      <button id="downloadJsonBtn" disabled>Download JSON</button>
+
+      <pre id="status" class="status">Ready.</pre>
+      <div id="output" class="output hidden"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
