@@ -2,6 +2,13 @@
 
 *Notes from developer:* I built this tool for quick extraction of LinkedIn profiles to use with my agents. It's not professional extension and **your feedback for improvements is very welcome!**
 
+Overview
+--------
+
+Get a clean, structured copy of a public LinkedIn profile without manual copying. 
+
+LinkedIn often truncates or spreads profile text across the UI, making it tedious to collect consistent data. This solution is a 1-click extraction the visible profile into a readable JSON file you can view or download; everything runs locally in your browser.
+
 What it extracts
 ----------------
 
