@@ -13,12 +13,10 @@
         <p>Extract a LinkedIn user's profile information from the currently open LinkedIn profile page. This extension works only on LinkedIn profile pages and runs locally in your browser.</p>
       </header>
 
-      <button id="aboutBtn">Show full About section</button>
-      <button id="experienceBtn">Show full Experience section</button>
-      <button id="featuredBtn">Show last 3 Featured items</button>
-      <button id="activityBtn">Show last 3 Activity items</button>
-      <button id="extractBtn" class="primary">Extract Profile Info</button>
-      <button id="downloadJsonBtn" disabled>Download JSON</button>
+      <div class="controls">
+        <button id="extractBtn" class="primary">Extract data</button>
+        <button id="downloadJsonBtn" disabled>Save profile</button>
+      </div>
 
       <pre id="status" class="status">Ready.</pre>
       <div id="output" class="output hidden"></div>

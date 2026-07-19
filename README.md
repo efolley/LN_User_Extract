@@ -1,11 +1,15 @@
 # LN User Extract
+*Notes from developer:* It's a simple extractor I quickly created for scrapping data for personal analysis. It's not a professional extension, but I **highly** appreciate your feedback to improve it. Thank you!
 
 A Chrome extension that reads the LinkedIn profile page you currently have
-open and turns it into structured JSON — name, headline, location, about,
+open and turns it into structured JSON: name, headline, location, about,
 work experience, featured posts, and recent activity. This tool extracts a LinkedIn user's information only; it operates on LinkedIn profile pages and runs locally in the browser. No external scraping or background requests are performed.
+
+Version 1.1.1
 
 Recent changes
 --------------
+- Release 1.1.1: Rename to "LN User Extract" and UI refresh (black/white/cyan theme, two-button layout).
 - Added GitHub Actions CI workflow to run tests on push/PR (automated test checks).
 - Added CONTRIBUTING.md and issue templates to guide contributors.
 - Sanitized .claude/settings.local.json to remove local permissions and avoid leaking approvals.

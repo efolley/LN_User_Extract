@@ -1,7 +1,3 @@
-const aboutBtn = document.getElementById("aboutBtn");
-const experienceBtn = document.getElementById("experienceBtn");
-const featuredBtn = document.getElementById("featuredBtn");
-const activityBtn = document.getElementById("activityBtn");
 const extractBtn = document.getElementById("extractBtn");
 const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const statusEl = document.getElementById("status");
@@ -76,32 +72,10 @@ async function requestData() {
 
 function downloadJson() {
   if (!lastData) return;
-  downloadFile("linkedin-profile-data.json", JSON.stringify(lastData, null, 2), "application/json");
+  const filename = "ln-user-extract-profile.json";
+  downloadFile(filename, JSON.stringify(lastData, null, 2), "application/json");
 }
 
-async function runAction(type) {
-  setStatus("Working...");
-  outputEl.classList.add("hidden");
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error("No active tab found.");
-
-    await ensureContentScriptInjected(tab.id);
-    const response = await chrome.tabs.sendMessage(tab.id, { type });
-    if (!response?.ok) throw new Error(response?.error || "Action failed.");
-
-    if (response.data !== undefined) {
-      showResult(response.data);
-    }
-    setStatus("Done.");
-  } catch (error) {
-    setStatus(`Error: ${error.message}`);
-  }
-}
-
-aboutBtn.addEventListener("click", () => runAction("EXPAND_ABOUT"));
-experienceBtn.addEventListener("click", () => runAction("EXPAND_EXPERIENCE"));
-featuredBtn.addEventListener("click", () => runAction("EXTRACT_FEATURED"));
-activityBtn.addEventListener("click", () => runAction("EXTRACT_ACTIVITY"));
+// Wire up the two remaining UI controls
 extractBtn.addEventListener("click", requestData);
 downloadJsonBtn.addEventListener("click", downloadJson);

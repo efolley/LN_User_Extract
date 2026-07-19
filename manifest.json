@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LN User Extract",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Extract a LinkedIn user's profile information (name, headline, location, about, experience, featured, activity). This extension only operates on LinkedIn profile pages.",
   "action": {
     "default_title": "LN User Extract — extract LinkedIn profile",
