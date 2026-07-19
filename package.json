@@ -1,10 +1,23 @@
 {
-  "name": "linkedin-profile-extractor",
+  "name": "ln-user-extract",
   "version": "1.1.0",
-  "private": true,
-  "description": "Chrome extension that extracts structured profile data (name, headline, location, about, experience, featured, activity) from the currently open LinkedIn profile page.",
+  "private": false,
+  "description": "Chrome extension that extracts a LinkedIn user's profile information (name, headline, location, about, experience, featured, activity). Operates only on LinkedIn profile pages.",
+  "main": "src/content.js",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "lint": "echo \"No linter configured\" && exit 0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<your-github-username>/ln-user-extract.git"
+  },
+  "author": "Egor Folley",
+  "keywords": [
+    "chrome-extension",
+    "linkedin",
+    "profile",
+    "extractor"
+  ],
   "license": "MIT"
 }

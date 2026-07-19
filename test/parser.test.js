@@ -75,7 +75,7 @@ describe("looksLikeLocation", () => {
 
 describe("parseCompanyTypeLine", () => {
   test("splits 'Company · Employment type' into a company name", () => {
-    assert.deepEqual(parser.parseCompanyTypeLine("WGL Energy · Full-time"), { company: "WGL Energy" });
+    assert.deepEqual(parser.parseCompanyTypeLine("Nimbus Energy · Full-time"), { company: "Nimbus Energy" });
   });
 
   test("recognizes a bare employment type with no company prefix", () => {
@@ -91,14 +91,14 @@ describe("parseExperienceEntry", () => {
   test("parses a standalone role with company embedded in its own line", () => {
     const lines = [
       "Director of Digital",
-      "WGL Energy · Full-time",
+      "Nimbus Energy · Full-time",
       "Feb 2025 - Present · 1 yr 6 mos",
       "Vienna, Virginia, United States",
       "Leads digital strategy for the retail energy business unit.",
     ];
     const entry = parser.parseExperienceEntry(lines, ["https://www.linkedin.com/company/1528519/"], "");
 
-    assert.equal(entry["Company name"], "WGL Energy");
+    assert.equal(entry["Company name"], "Nimbus Energy");
     assert.equal(entry.Title, "Director of Digital");
     assert.equal(entry.Years, "Feb 2025 - Present · 1 yr 6 mos");
     assert.equal(entry.Location, "Vienna, Virginia, United States");
@@ -113,9 +113,9 @@ describe("parseExperienceEntry", () => {
       "Feb 2016 - Mar 2022 · 6 yrs 2 mos",
       "Established innovation processes for a $60M program.",
     ];
-    const entry = parser.parseExperienceEntry(lines, [], "Bechtel Corporation");
+    const entry = parser.parseExperienceEntry(lines, [], "Union Buildworks");
 
-    assert.equal(entry["Company name"], "Bechtel Corporation");
+    assert.equal(entry["Company name"], "Union Buildworks");
     assert.equal(entry.Title, "Head of Innovation (Director-level)");
     // The bare "Full-time" line must never leak into Content or Company name.
     assert.ok(!entry.Content.includes("Full-time"));
@@ -166,10 +166,10 @@ describe("extractSectionLines", () => {
 describe("stripAuthorHeader", () => {
   test("removes the leading name/degree/headline/time preamble from a post", () => {
     const raw =
-      "Nicolas Ciarfaglia • 2nd Co-Founder & CGO at EcoGaia 1d • The biggest opportunity is often not creating a new project.";
+      "Alex Rivera • 2nd Co-Founder & CEO at Verdant Labs 1d • Sharing a quick update on a project milestone we hit this week.";
     assert.equal(
       parser.stripAuthorHeader(raw),
-      "The biggest opportunity is often not creating a new project."
+      "Sharing a quick update on a project milestone we hit this week."
     );
   });
 
@@ -191,7 +191,7 @@ describe("isShowAllText", () => {
 
 describe("parseFeaturedEntry", () => {
   test("classifies a reshare via 'Reshared by' wording", () => {
-    const entry = parser.parseFeaturedEntry("Reshared by Nicolas Ciarfaglia This wasn't overnight.");
+    const entry = parser.parseFeaturedEntry("Reshared by Alex Rivera This took the whole team's effort.");
     assert.equal(entry["Post type"], "reshared");
   });
 
@@ -204,10 +204,10 @@ describe("parseFeaturedEntry", () => {
 describe("parseActivityEntry", () => {
   test("strips the author header for a plain post", () => {
     const raw =
-      "Nicolas Ciarfaglia • 2nd Co-Founder & CGO at EcoGaia 1d • The biggest opportunity is often not creating a new project.";
+      "Alex Rivera • 2nd Co-Founder & CEO at Verdant Labs 1d • Sharing a quick update on a project milestone we hit this week.";
     const entry = parser.parseActivityEntry(raw, "");
     assert.equal(entry["Post type"], "post");
-    assert.equal(entry.Content, "The biggest opportunity is often not creating a new project.");
+    assert.equal(entry.Content, "Sharing a quick update on a project milestone we hit this week.");
     assert.equal(entry["Reshared post info"], undefined);
   });
 
