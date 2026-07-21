@@ -12,6 +12,11 @@
     "type": "git",
     "url": "https://github.com/egorfolley/LN_User_Extract.git"
   },
+  "bugs": {
+    "url": "https://github.com/egorfolley/LN_User_Extract/issues"
+  },
+  "homepage": "https://github.com/egorfolley/LN_User_Extract#readme",
+
   "author": "Egor Folley",
   "keywords": [
     "chrome-extension",

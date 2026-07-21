@@ -1,3 +1,7 @@
+Developer note
+--------------
+I built this tool for quick extraction of LinkedIn profiles to use with my agents. It's an experimental utility for personal analysis; contributions and feedback are welcome.
+
 Contributing
 ============
 

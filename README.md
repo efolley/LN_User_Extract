@@ -1,13 +1,12 @@
 # LN User Extract
 
-*Notes from developer:* I built this tool for quick extraction of LinkedIn profiles to use with my agents. It's not professional extension and **your feedback for improvements is very welcome!**
+[![CI](https://github.com/egorfolley/LN_User_Extract/actions/workflows/nodejs-test.yml/badge.svg)](https://github.com/egorfolley/LN_User_Extract/actions) [![Stars](https://img.shields.io/github/stars/egorfolley/LN_User_Extract?style=flat)](https://github.com/egorfolley/LN_User_Extract/stargazers)
 
-Overview
---------
+## Quick overview
 
-Get a clean, structured copy of a public LinkedIn profile without manual copying. 
+I built this app for people who are looking for ways to automatically scrap LinkedIn profiles. For now, when you work on a lead qualification and need to store data, use this extension for faster work. Personally, I use it to save to my NotionDB and then use agents for next steps: ICP status, rapport, commercial insight, etc.
 
-LinkedIn often truncates or spreads profile text across the UI, making it tedious to collect consistent data. This solution is a 1-click extraction the visible profile into a readable JSON file you can view or download; everything runs locally in your browser.
+So now, you have 1-click way to get a clean, structured copy of a public LinkedIn profile. A popup button extracts the visible profile into readable JSON you can preview or download; extraction runs locally in your browser.
 
 What it extracts
 ----------------
@@ -53,7 +52,7 @@ npm test
 
 Limitations
 -----------
-
+b
 - LinkedIn's markup can change; heuristics may require updates.
 - Very long/virtualized lists may need manual scrolling for full extraction.
 
