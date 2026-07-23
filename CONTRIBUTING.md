@@ -1,5 +1,6 @@
 Developer note
 --------------
+
 I built this tool for quick extraction of LinkedIn profiles to use with my agents. It's an experimental utility for personal analysis; contributions and feedback are welcome.
 
 Contributing
@@ -25,6 +26,6 @@ Code style
 No specific formatter or linter is enforced. If you submit code, please keep changes small and include tests for new parsing logic in test/.
 
 Reporting security/privacy issues
---------------------------------
+---------------------------------
 
 If you discover a security or privacy issue (including accidentally committed credentials), please open a private issue or contact the repository owner directly instead of creating a public issue.
