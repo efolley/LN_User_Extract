@@ -1,7 +1,12 @@
 const extractBtn = document.getElementById("extractBtn");
 const downloadJsonBtn = document.getElementById("downloadJsonBtn");
+const saveNotionBtn = document.getElementById("saveNotionBtn");
+const notionTokenInput = document.getElementById("notionToken");
+const notionDatabaseIdInput = document.getElementById("notionDatabaseId");
 const statusEl = document.getElementById("status");
 const outputEl = document.getElementById("output");
+
+const NOTION_STORAGE_KEY = "notionSettings";
 
 let lastData = null;
 
@@ -63,6 +68,7 @@ async function requestData() {
     showResult(lastData);
     setStatus("Done.");
     downloadJsonBtn.disabled = false;
+    saveNotionBtn.disabled = false;
   } catch (error) {
     setStatus(`Error: ${error.message}`);
   } finally {
@@ -76,6 +82,50 @@ function downloadJson() {
   downloadFile(filename, JSON.stringify(lastData, null, 2), "application/json");
 }
 
-// Wire up the two remaining UI controls
+async function loadNotionSettings() {
+  const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
+  const settings = stored[NOTION_STORAGE_KEY] || {};
+  if (settings.token) notionTokenInput.value = settings.token;
+  if (settings.databaseId) notionDatabaseIdInput.value = settings.databaseId;
+}
+
+async function persistNotionSettings() {
+  await chrome.storage.local.set({
+    [NOTION_STORAGE_KEY]: {
+      token: notionTokenInput.value.trim(),
+      databaseId: window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value),
+    },
+  });
+}
+
+async function saveToNotion() {
+  if (!lastData) return;
+
+  const token = notionTokenInput.value.trim();
+  const databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value);
+
+  saveNotionBtn.disabled = true;
+  setStatus("Saving to Notion...");
+
+  try {
+    if (!token || !databaseId) {
+      throw new Error("Enter your Notion integration token and database ID first.");
+    }
+    await persistNotionSettings();
+    const pageUrl = await window.NotionClient.saveProfileToNotion(token, databaseId, lastData);
+    setStatus(`Saved to Notion: ${pageUrl}`);
+  } catch (error) {
+    setStatus(`Notion error: ${error.message}`);
+  } finally {
+    saveNotionBtn.disabled = !lastData;
+  }
+}
+
+// Wire up UI controls
 extractBtn.addEventListener("click", requestData);
 downloadJsonBtn.addEventListener("click", downloadJson);
+saveNotionBtn.addEventListener("click", saveToNotion);
+notionTokenInput.addEventListener("change", persistNotionSettings);
+notionDatabaseIdInput.addEventListener("change", persistNotionSettings);
+
+loadNotionSettings();
