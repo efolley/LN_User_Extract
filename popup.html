@@ -16,12 +16,24 @@
       <div class="controls">
         <button id="extractBtn" class="primary">Extract data</button>
         <button id="downloadJsonBtn" disabled>Save profile</button>
+        <button id="saveNotionBtn" disabled>Save to Notion</button>
       </div>
+
+      <details class="notion-settings">
+        <summary>Notion settings</summary>
+        <label for="notionToken">Integration token</label>
+        <input id="notionToken" type="password" placeholder="secret_..." autocomplete="off" />
+        <label for="notionDatabaseId">Database ID or URL</label>
+        <input id="notionDatabaseId" type="text" placeholder="Paste a database ID or its Notion URL" autocomplete="off" />
+        <p class="hint">Stored locally in your browser. Only sent to api.notion.com when you click "Save to Notion".</p>
+      </details>
 
       <pre id="status" class="status">Ready.</pre>
       <div id="output" class="output hidden"></div>
     </div>
 
+    <script src="src/notion.js"></script>
+    <script src="src/notion-client.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
