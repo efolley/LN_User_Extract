@@ -1,8 +1,6 @@
 const extractBtn = document.getElementById("extractBtn");
 const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const saveNotionBtn = document.getElementById("saveNotionBtn");
-const notionTokenInput = document.getElementById("notionToken");
-const notionDatabaseIdInput = document.getElementById("notionDatabaseId");
 const notionDbSelect = document.getElementById("notionDbSelect");
 const connectNotionBtn = document.getElementById("connectNotionBtn");
 const connectedStatusEl = document.getElementById("connectedStatus");
@@ -89,19 +87,20 @@ function downloadJson() {
 async function loadNotionSettings() {
   const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
   const settings = stored[NOTION_STORAGE_KEY] || {};
-  if (settings.token) notionTokenInput.value = settings.token;
-  if (settings.databaseId) notionDatabaseIdInput.value = settings.databaseId;
+  if (settings.databaseId) {
+    // select will be populated after fetchDatabases; store desired id for later selection
+    notionDbSelect.dataset.selected = settings.databaseId;
+  }
   if (settings.client_token) {
     connectedStatusEl.textContent = 'Connected';
     fetchDatabases(settings.client_token);
   }
 }
 
-async function persistNotionSettings() {
+async function persistSelectedDatabase(dbId) {
   const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
   const settings = stored[NOTION_STORAGE_KEY] || {};
-  settings.token = notionTokenInput.value.trim();
-  settings.databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value);
+  settings.databaseId = dbId || '';
   await chrome.storage.local.set({ [NOTION_STORAGE_KEY]: settings });
 }
 
@@ -135,6 +134,17 @@ function populateDatabaseSelect(dbs) {
     opt.textContent = d.title || d.id;
     notionDbSelect.appendChild(opt);
   });
+
+  // If a previously selected database id was stored, try to select it
+  const desired = notionDbSelect.dataset.selected;
+  if (desired) {
+    const opt = Array.from(notionDbSelect.options).find((o) => o.value === desired);
+    if (opt) {
+      opt.selected = true;
+      persistSelectedDatabase(desired);
+    }
+    delete notionDbSelect.dataset.selected;
+  }
 }
 
 async function connectToNotion() {
@@ -163,36 +173,27 @@ async function connectToNotion() {
 async function saveToNotion() {
   if (!lastData) return;
 
-  // Prefer server client_token over manual token if present
+  // Use server client_token exclusively
   const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
   const settings = stored[NOTION_STORAGE_KEY] || {};
   const clientToken = settings.client_token || null;
-  const manualToken = notionTokenInput.value.trim();
-  const databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value) || notionDbSelect.value;
+  const databaseId = notionDbSelect.value;
 
   saveNotionBtn.disabled = true;
   setStatus('Saving to Notion...');
 
   try {
-    if (clientToken) {
-      // Use server to save profile (mapping/selected DB persisted on server)
-      const res = await fetch(`${SERVER_ORIGIN}/api/save-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${clientToken}` },
-        body: JSON.stringify({ notion_database_id: databaseId, profile: lastData }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Save failed');
-      setStatus(`Saved to Notion (server): ${body.page?.url || body.page?.id || 'ok'}`);
-    } else {
-      // Fallback: use manual token and client-side notion client
-      const token = manualToken;
-      const dbId = databaseId;
-      if (!token || !dbId) throw new Error('Enter token and database id');
-      await persistNotionSettings();
-      const pageUrl = await window.NotionClient.saveProfileToNotion(token, dbId, lastData);
-      setStatus(`Saved to Notion: ${pageUrl}`);
-    }
+    if (!clientToken) throw new Error('Not connected to Notion. Click "Connect to Notion" first.');
+    if (!databaseId) throw new Error('Select a Notion database first.');
+
+    const res = await fetch(`${SERVER_ORIGIN}/api/save-profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${clientToken}` },
+      body: JSON.stringify({ notion_database_id: databaseId, profile: lastData }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Save failed');
+    setStatus(`Saved to Notion: ${body.page?.url || body.page?.id || 'ok'}`);
   } catch (error) {
     setStatus(`Notion error: ${error.message}`);
   } finally {
@@ -204,9 +205,7 @@ async function saveToNotion() {
 extractBtn.addEventListener("click", requestData);
 downloadJsonBtn.addEventListener("click", downloadJson);
 saveNotionBtn.addEventListener("click", saveToNotion);
-notionTokenInput.addEventListener("change", persistNotionSettings);
-notionDatabaseIdInput.addEventListener("change", persistNotionSettings);
 connectNotionBtn.addEventListener('click', connectToNotion);
-notionDbSelect.addEventListener('change', (e) => { notionDatabaseIdInput.value = e.target.value; persistNotionSettings(); });
+notionDbSelect.addEventListener('change', (e) => { persistSelectedDatabase(e.target.value); });
 
 loadNotionSettings();
