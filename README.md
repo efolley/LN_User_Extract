@@ -22,6 +22,17 @@ What it extracts
 3. Click "Extract data" - the extension reads the page and shows structured JSON
 4. Click "Save profile" - download the last extraction as ln-user-extract-profile.json
 
+## Save directly to Notion
+
+You can also push an extraction straight into a Notion database instead of (or in addition to) downloading the JSON:
+
+1. Create an integration at [notion.so/my-integrations](https://www.notion.so/my-integrations) and copy its **Internal Integration Secret** (starts with `secret_` or `ntn_`).
+2. Open the Notion database you want to save profiles into, click **···** in the top right, and under **Connections** add the integration you just created.
+3. In the extension popup, open **Notion settings**, paste in the integration token, and paste in the database's ID or just its full URL - either works.
+4. After clicking **Extract data**, click **Save to Notion**. This creates one new page in that database titled with the profile's name, with headline/location/about/experience/featured/activity written into the page body.
+
+The token and database ID are stored locally via `chrome.storage` and are only ever sent to `api.notion.com` - never to any other server.
+
 Privacy
 -------
 
@@ -37,11 +48,13 @@ Install (developer mode)
 Technical details
 -----------------
 
-- manifest.json — extension metadata and permissions (hosts: https://www.linkedin.com/*)
-- popup.html/.css/.js — toolbar UI (Extract data, Save profile) and click handlers
+- manifest.json — extension metadata and permissions (hosts: https://www.linkedin.com/*, https://api.notion.com/*)
+- popup.html/.css/.js — toolbar UI (Extract data, Save profile, Save to Notion) and click handlers
 - src/parser.js — pure text-parsing logic (unit-tested, no DOM APIs)
 - src/content.js — DOM traversal and messaging to parser.js
-- test/parser.test.js — unit tests for parser.js
+- src/notion.js — pure Notion API payload builder (unit-tested, no network calls)
+- src/notion-client.js — thin Notion API client (fetch calls) built on top of notion.js
+- test/parser.test.js, test/notion.test.js — unit tests
 
 Running tests
 -------------
@@ -64,4 +77,5 @@ See CONTRIBUTING.md and .github/ISSUE_TEMPLATE/ for guidance.
 Changelog (recent)
 ------------------
 
+- 1.2.0: Add "Save to Notion" - push an extraction straight into a Notion database.
 - 1.1.1: Rename to "LN User Extract", UI refresh (black/white/cyan), two-button layout, CI and contributor docs.
