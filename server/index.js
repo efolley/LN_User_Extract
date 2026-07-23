@@ -2,7 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const migrate = require('./migrate');
-const { get, all, run } = require('./db');
+
+const authRouter = require('./auth');
+const apiRouter = require('./api');
 
 const app = express();
 app.use(express.json());
@@ -20,11 +22,11 @@ app.post('/_migrate', async (req, res) => {
   }
 });
 
-// Placeholder: list databases for a user (requires Authorization: Bearer <client_token>)
-app.get('/api/databases', async (req, res) => {
-  // TODO: authenticate user via client_token header and call Notion with stored tokens
-  res.json({ databases: [] });
-});
+// OAuth routes
+app.use('/', authRouter);
+
+// API routes (require Authorization)
+app.use('/api', apiRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
