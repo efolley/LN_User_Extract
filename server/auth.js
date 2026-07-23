@@ -80,13 +80,30 @@ router.get('/auth/callback', async (req, res) => {
       [workspaceId, clientToken, encAccess, encRefresh]
     );
 
-    // Return a friendly HTML page containing the client token so the extension can capture it.
+    // Return an HTML page that posts the token to window.opener (so the extension popup can capture it)
     res.set('Content-Type', 'text/html');
     res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Notion connected</title></head><body>
       <h2>Notion connected</h2>
-      <p>This page contains a short-lived client token for the extension. Copy it and paste into the extension settings if required.</p>
-      <pre id="token">${clientToken}</pre>
-      <p>You may now close this window.</p>
+      <p>You may now return to the extension. If the extension opened this window it will receive the token automatically.</p>
+      <pre id="token" style="display:none">${clientToken}</pre>
+      <script>
+        (function() {
+          try {
+            var token = ${JSON.stringify(clientToken)};
+            if (window.opener && window.opener.postMessage) {
+              // Send to the opener window and then close
+              window.opener.postMessage({ type: 'NOTION_CLIENT_TOKEN', token: token }, '*');
+              setTimeout(function() { window.close(); }, 500);
+            } else {
+              // Fallback: show token for manual copy
+              document.getElementById('token').style.display = 'block';
+            }
+          } catch (e) {
+            document.getElementById('token').style.display = 'block';
+          }
+        })();
+      </script>
+      <p>If the window did not close automatically, you can close it now.</p>
       </body></html>`);
   } catch (err) {
     console.error(err);

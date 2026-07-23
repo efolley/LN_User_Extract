@@ -3,10 +3,14 @@ const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const saveNotionBtn = document.getElementById("saveNotionBtn");
 const notionTokenInput = document.getElementById("notionToken");
 const notionDatabaseIdInput = document.getElementById("notionDatabaseId");
+const notionDbSelect = document.getElementById("notionDbSelect");
+const connectNotionBtn = document.getElementById("connectNotionBtn");
+const connectedStatusEl = document.getElementById("connectedStatus");
 const statusEl = document.getElementById("status");
 const outputEl = document.getElementById("output");
 
 const NOTION_STORAGE_KEY = "notionSettings";
+const SERVER_ORIGIN = "http://localhost:3000"; // change if your server runs elsewhere
 
 let lastData = null;
 
@@ -87,33 +91,108 @@ async function loadNotionSettings() {
   const settings = stored[NOTION_STORAGE_KEY] || {};
   if (settings.token) notionTokenInput.value = settings.token;
   if (settings.databaseId) notionDatabaseIdInput.value = settings.databaseId;
+  if (settings.client_token) {
+    connectedStatusEl.textContent = 'Connected';
+    fetchDatabases(settings.client_token);
+  }
 }
 
 async function persistNotionSettings() {
-  await chrome.storage.local.set({
-    [NOTION_STORAGE_KEY]: {
-      token: notionTokenInput.value.trim(),
-      databaseId: window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value),
-    },
+  const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
+  const settings = stored[NOTION_STORAGE_KEY] || {};
+  settings.token = notionTokenInput.value.trim();
+  settings.databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value);
+  await chrome.storage.local.set({ [NOTION_STORAGE_KEY]: settings });
+}
+
+async function saveClientToken(clientToken) {
+  const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
+  const settings = stored[NOTION_STORAGE_KEY] || {};
+  settings.client_token = clientToken;
+  await chrome.storage.local.set({ [NOTION_STORAGE_KEY]: settings });
+  connectedStatusEl.textContent = 'Connected';
+}
+
+async function fetchDatabases(clientToken) {
+  try {
+    setStatus('Fetching Notion databases...');
+    const res = await fetch(`${SERVER_ORIGIN}/api/databases`, { headers: { Authorization: `Bearer ${clientToken}` } });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Failed to fetch databases');
+    populateDatabaseSelect(body.databases || []);
+    setStatus('Databases loaded');
+  } catch (err) {
+    console.error(err);
+    setStatus('Could not load databases');
+  }
+}
+
+function populateDatabaseSelect(dbs) {
+  notionDbSelect.innerHTML = '<option value="">(none)</option>';
+  dbs.forEach((d) => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.title || d.id;
+    notionDbSelect.appendChild(opt);
   });
+}
+
+async function connectToNotion() {
+  // Open the server OAuth start URL — server will redirect to Notion and callback posts token back
+  const url = `${SERVER_ORIGIN}/auth/start`;
+  const win = window.open(url, 'notion_oauth', 'width=600,height=800');
+
+  // Listen for postMessage from the popup callback
+  function onMessage(e) {
+    try {
+      if (!e.data || e.data.type !== 'NOTION_CLIENT_TOKEN') return;
+      const clientToken = e.data.token;
+      if (clientToken) {
+        saveClientToken(clientToken);
+        fetchDatabases(clientToken);
+      }
+    } finally {
+      window.removeEventListener('message', onMessage);
+      if (win && !win.closed) win.close();
+    }
+  }
+
+  window.addEventListener('message', onMessage);
 }
 
 async function saveToNotion() {
   if (!lastData) return;
 
-  const token = notionTokenInput.value.trim();
-  const databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value);
+  // Prefer server client_token over manual token if present
+  const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
+  const settings = stored[NOTION_STORAGE_KEY] || {};
+  const clientToken = settings.client_token || null;
+  const manualToken = notionTokenInput.value.trim();
+  const databaseId = window.NotionPagePayload.extractNotionId(notionDatabaseIdInput.value) || notionDbSelect.value;
 
   saveNotionBtn.disabled = true;
-  setStatus("Saving to Notion...");
+  setStatus('Saving to Notion...');
 
   try {
-    if (!token || !databaseId) {
-      throw new Error("Enter your Notion integration token and database ID first.");
+    if (clientToken) {
+      // Use server to save profile (mapping/selected DB persisted on server)
+      const res = await fetch(`${SERVER_ORIGIN}/api/save-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${clientToken}` },
+        body: JSON.stringify({ notion_database_id: databaseId, profile: lastData }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Save failed');
+      setStatus(`Saved to Notion (server): ${body.page?.url || body.page?.id || 'ok'}`);
+    } else {
+      // Fallback: use manual token and client-side notion client
+      const token = manualToken;
+      const dbId = databaseId;
+      if (!token || !dbId) throw new Error('Enter token and database id');
+      await persistNotionSettings();
+      const pageUrl = await window.NotionClient.saveProfileToNotion(token, dbId, lastData);
+      setStatus(`Saved to Notion: ${pageUrl}`);
     }
-    await persistNotionSettings();
-    const pageUrl = await window.NotionClient.saveProfileToNotion(token, databaseId, lastData);
-    setStatus(`Saved to Notion: ${pageUrl}`);
   } catch (error) {
     setStatus(`Notion error: ${error.message}`);
   } finally {
@@ -127,5 +206,7 @@ downloadJsonBtn.addEventListener("click", downloadJson);
 saveNotionBtn.addEventListener("click", saveToNotion);
 notionTokenInput.addEventListener("change", persistNotionSettings);
 notionDatabaseIdInput.addEventListener("change", persistNotionSettings);
+connectNotionBtn.addEventListener('click', connectToNotion);
+notionDbSelect.addEventListener('change', (e) => { notionDatabaseIdInput.value = e.target.value; persistNotionSettings(); });
 
 loadNotionSettings();

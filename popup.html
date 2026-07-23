@@ -21,11 +21,21 @@
 
       <details class="notion-settings">
         <summary>Notion settings</summary>
-        <label for="notionToken">Integration token</label>
+        <div class="notion-connect">
+          <button id="connectNotionBtn">Connect to Notion</button>
+          <span id="connectedStatus" class="hint">Not connected</span>
+        </div>
+
+        <label for="notionToken">Integration token (fallback)</label>
         <input id="notionToken" type="password" placeholder="secret_..." autocomplete="off" />
+
         <label for="notionDatabaseId">Database ID or URL</label>
         <input id="notionDatabaseId" type="text" placeholder="Paste a database ID or its Notion URL" autocomplete="off" />
-        <p class="hint">Stored locally in your browser. Only sent to api.notion.com when you click "Save to Notion".</p>
+
+        <label for="notionDbSelect">Or select a database</label>
+        <select id="notionDbSelect"><option value="">(none)</option></select>
+
+        <p class="hint">Stored locally in your browser. When connected via the server, click "Connect to Notion" and choose a database from the list.</p>
       </details>
 
       <pre id="status" class="status">Ready.</pre>
