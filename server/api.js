@@ -29,7 +29,7 @@ router.get('/databases', async (req, res) => {
     // Cache basic list in databases table
     for (const db of list) {
       await run(
-        'INSERT INTO databases (user_id, notion_database_id, title, properties_json, last_synced_at) VALUES (?, ?, ?, ?, strftime('%s','now')) ON CONFLICT DO NOTHING',
+        "INSERT INTO databases (user_id, notion_database_id, title, properties_json, last_synced_at) VALUES (?, ?, ?, ?, strftime('%s','now')) ON CONFLICT DO NOTHING",
         [req.user.id, db.id, db.title, null]
       ).catch(() => {});
     }
@@ -57,7 +57,7 @@ router.post('/mapping', async (req, res) => {
     if (!notion_database_id || !mapping) return res.status(400).json({ error: 'missing fields' });
     const exists = await get('SELECT * FROM mappings WHERE user_id = ? AND notion_database_id = ?', [req.user.id, notion_database_id]);
     if (exists) {
-      await run('UPDATE mappings SET mapping_json = ?, updated_at = strftime('%s','now') WHERE id = ?', [JSON.stringify(mapping), exists.id]);
+      await run("UPDATE mappings SET mapping_json = ?, updated_at = strftime('%s','now') WHERE id = ?", [JSON.stringify(mapping), exists.id]);
     } else {
       await run('INSERT INTO mappings (user_id, notion_database_id, mapping_json) VALUES (?, ?, ?)', [req.user.id, notion_database_id, JSON.stringify(mapping)]);
     }

@@ -4,9 +4,9 @@
   "version": "1.2.0",
   "description": "Extract a LinkedIn user's profile information (name, headline, location, about, experience, featured, activity) and optionally save it straight to a Notion database. This extension only operates on LinkedIn profile pages.",
   "action": {
-    "default_title": "LN User Extract — extract LinkedIn profile",
-    "default_popup": "popup.html"
+    "default_title": "LN User Extract — extract LinkedIn profile"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://www.linkedin.com/*", "https://api.notion.com/*"]
+  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "host_permissions": ["https://www.linkedin.com/*", "https://api.notion.com/*"],
+  "background": { "service_worker": "service_worker.js" }
 }

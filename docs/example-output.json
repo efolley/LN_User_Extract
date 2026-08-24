@@ -1,0 +1,24 @@
+{
+  "url": "https://www.linkedin.com/in/example/",
+  "name": "Jane Smith",
+  "headline": "Senior Product Manager",
+  "location": "San Francisco Bay Area",
+  "about": "Product leader with experience building developer tools.",
+  "experience": [
+    {
+      "Company name": "Acme Corp",
+      "Title": "Senior Product Manager",
+      "Years": "Jan 2020 - Present",
+      "Location": "Remote",
+      "Content": "Led the launch of the Acme CLI, improving onboarding.",
+      "All available links": ["https://www.linkedin.com/company/acme"],
+      "Skills": ["Product", "Go", "Design"]
+    }
+  ],
+  "featured": [
+    { "Post type": "post", "Content": "Announcing our new release!" }
+  ],
+  "activity": [
+    { "Post type": "post", "Content": "Excited to share this milestone." }
+  ]
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LN User Extract (Persistent)</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>LN User Extract</h1>
+        <p>Persistent window — stays open until you close it.</p>
+        <button id="persistentClose" class="close-x" title="Close">×</button>
+      </header>
+
+      <div class="controls">
+        <button id="extractBtn" class="primary">Extract data</button>
+        <button id="downloadJsonBtn" disabled>Save profile</button>
+        <button id="saveNotionBtn" disabled>Save to Notion</button>
+      </div>
+
+      <details class="notion-settings">
+        <summary>Notion settings</summary>
+        <div class="notion-connect">
+          <button id="connectNotionBtn">Connect to Notion</button>
+          <span id="connectedStatus" class="hint">Not connected</span>
+        </div>
+
+        <label for="notionDbSelect">Select a database</label>
+        <select id="notionDbSelect"><option value="">(none)</option></select>
+
+        <p class="hint">Click "Connect to Notion" to authorize the extension. The server will store the connection; select a database from the list to use for saves.</p>
+      </details>
+
+      <pre id="status" class="status">Ready.</pre>
+      <div id="output" class="output hidden"></div>
+    </div>
+
+    <script src="src/notion.js"></script>
+    <script src="src/notion-client.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

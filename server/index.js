@@ -28,7 +28,9 @@ app.use('/', authRouter);
 // API routes (require Authorization)
 app.use('/api', apiRouter);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+}
 
 module.exports = app;

@@ -16,7 +16,6 @@
     "url": "https://github.com/egorfolley/LN_User_Extract/issues"
   },
   "homepage": "https://github.com/egorfolley/LN_User_Extract#readme",
-
   "author": "Egor Folley",
   "keywords": [
     "chrome-extension",
@@ -24,5 +23,8 @@
     "profile",
     "extractor"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
 }

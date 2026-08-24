@@ -2,11 +2,15 @@
 
 [![CI](https://github.com/egorfolley/LN_User_Extract/actions/workflows/nodejs-test.yml/badge.svg)](https://github.com/egorfolley/LN_User_Extract/actions) [![Stars](https://img.shields.io/github/stars/egorfolley/LN_User_Extract?style=flat)](https://github.com/egorfolley/LN_User_Extract/stargazers)
 
-## Quick overview
+## Overview
 
-I built this app for people who are looking for ways to automatically scrap LinkedIn profiles. For now, when you work on a lead qualification and need to store data, use this extension for faster work. Personally, I use it to save to my NotionDB and then use agents for next steps: ICP status, rapport, commercial insight, etc.
+I built this app for people who are looking for ways to automatically extract LinkedIn profiles. It's not a tool for auto-scrape on the background. When you work on a lead qualification and need to store data, use this extension for faster work. Personally, I use it to save to my NotionDB and then use agents for next steps: ICP status, rapport, commercial insight, etc.
 
 So now, you have 1-click way to get a clean, structured copy of a public LinkedIn profile. A popup button extracts the visible profile into readable JSON you can preview or download; extraction runs locally in your browser.
+
+### Screenshot
+
+![screenshot](docs/screenshot_test.png)
 
 What it extracts
 ----------------
@@ -21,6 +25,27 @@ What it extracts
 2. Click the extension icon in Chrome's toolbar
 3. Click "Extract data" - the extension reads the page and shows structured JSON
 4. Click "Save profile" - download the last extraction as ln-user-extract-profile.json
+
+Server (optional — Notion integration)
+---------------------------------------
+
+1. Start the local server to enable Notion OAuth and saving extractions:
+
+```bash
+cd server
+npm install
+cp .env.example .env
+# Fill NOTION_CLIENT_ID and NOTION_CLIENT_SECRET in server/.env
+npm run migrate
+npm start
+```
+
+2. Back in the extension popup, click "Connect to Notion" and follow the OAuth flow.
+
+Example output
+--------------
+
+See `docs/example-output.json` for a sample extraction JSON you can expect from the extension.
 
 ## Save directly to Notion
 
@@ -65,9 +90,11 @@ npm test
 
 Limitations
 -----------
-b
-- LinkedIn's markup can change; heuristics may require updates.
-- Very long/virtualized lists may need manual scrolling for full extraction.
+
+- LinkedIn's markup can change; heuristics may require updates
+- No validation guardrails - just straightforward extraction
+- Very long/virtualized lists may need manual scrolling for full extraction
+- No connection to Notion/Obsidian/Excel files
 
 Contributing
 ------------

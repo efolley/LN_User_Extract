@@ -1,6 +1,7 @@
 const extractBtn = document.getElementById("extractBtn");
 const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const saveNotionBtn = document.getElementById("saveNotionBtn");
+const persistentCloseBtn = document.getElementById('persistentClose');
 const notionDbSelect = document.getElementById("notionDbSelect");
 const connectNotionBtn = document.getElementById("connectNotionBtn");
 const connectedStatusEl = document.getElementById("connectedStatus");
@@ -11,6 +12,13 @@ const NOTION_STORAGE_KEY = "notionSettings";
 const SERVER_ORIGIN = "http://localhost:3000"; // change if your server runs elsewhere
 
 let lastData = null;
+
+// If the popup is opened as the browser action popup, auto-open a persistent
+// window that remains open until the user closes it. The persistent window
+// is the same UI served from `persistent.html?persistent=1` and uses the
+// same scripts/styles. If the current page is already the persistent window
+// (presence of the query param), do nothing.
+// (Removed previous persistent window auto-open — replaced by in-page panel.)
 
 function setStatus(message) {
   statusEl.textContent = message;
@@ -25,13 +33,86 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
-function renderJsonPreview(data) {
-  outputEl.innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+function renderProfilePreview(data) {
+  if (!data) {
+    outputEl.innerHTML = "";
+    outputEl.classList.add("hidden");
+    return;
+  }
+
+  const makeField = (label, key, value, opts = {}) => {
+    const v = value == null || value === "" ? "" : escapeHtml(value);
+    const editable = opts.readOnly ? "" : ' contenteditable="true"';
+    return `<div class="field"><h2>${escapeHtml(label)}:</h2><div class="value" data-key="${escapeHtml(key)}"${editable}>${v}</div></div>`;
+  };
+
+  let html = `<div class="profile">`;
+  html += makeField('URL', 'url', data.url);
+  html += makeField('Email', 'email', data.email || '');
+  html += makeField('Name', 'name', data.name);
+  html += makeField('Headline', 'headline', data.headline);
+  html += makeField('Location', 'location', data.location);
+  html += `<div class="field"><h2>About:</h2><div class="value" data-key="about" contenteditable="true">${escapeHtml(data.about || '')}</div></div>`;
+
+  // Experience
+  html += `<h3>Experience</h3>`;
+  if (Array.isArray(data.experience) && data.experience.length) {
+    html += `<div class="experience">`;
+    data.experience.forEach((e, idx) => {
+      const company = escapeHtml(e['Company name'] || '');
+      const title = escapeHtml(e.Title || '');
+      const content = escapeHtml(e.Content || '');
+      const loc = escapeHtml(e.Location || '');
+      html += `<div class="exp-item" data-exp-index="${idx}">`;
+      html += `<div class="exp-header"><div class="exp-company" data-exp-field="company" contenteditable="true">${company}</div><div class="exp-title" data-exp-field="title" contenteditable="true">${title}</div></div>`;
+      html += `<div class="exp-content" data-exp-field="content" contenteditable="true">${content}</div>`;
+      html += `<div class="exp-location" data-exp-field="location" contenteditable="true">${loc}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="value">—</div>`;
+  }
+
+  // Featured
+  html += `<h3>Featured</h3>`;
+  if (Array.isArray(data.featured) && data.featured.length) {
+    html += `<div class="featured">`;
+    data.featured.forEach((f, idx) => {
+      const postType = escapeHtml(f['Post type'] || '');
+      const content = escapeHtml(f.Content || '');
+      html += `<div class="featured-item" data-featured-index="${idx}"><div class="featured-type" data-featured-field="type" contenteditable="true"><strong>${postType || 'Post'}</strong></div><div class="featured-content" data-featured-field="content" contenteditable="true">${content}</div></div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="value">—</div>`;
+  }
+
+  // Activity
+  html += `<h3>Activity</h3>`;
+  if (Array.isArray(data.activity) && data.activity.length) {
+    html += `<div class="activity">`;
+    data.activity.forEach((a, idx) => {
+      const postType = escapeHtml(a['Post type'] || '');
+      const content = escapeHtml(a.Content || '');
+      html += `<div class="activity-item" data-activity-index="${idx}"><div class="activity-type" data-activity-field="type" contenteditable="true"><strong>${postType || 'Post'}</strong></div><div class="activity-content" data-activity-field="content" contenteditable="true">${content}</div></div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="value">—</div>`;
+  }
+
+  // Notes field
+  html += `<div class="field"><h2>Notes:</h2><div class="value" data-key="notes" contenteditable="true">${escapeHtml(data.notes || '')}</div></div>`;
+
+  html += `</div>`;
+
+  outputEl.innerHTML = html;
   outputEl.classList.remove("hidden");
 }
 
 function showResult(data) {
-  renderJsonPreview(data);
+  renderProfilePreview(data);
 }
 
 function downloadFile(filename, content, mimeType) {
@@ -67,8 +148,18 @@ async function requestData() {
     if (!response?.ok) throw new Error(response?.error || "Extraction failed.");
 
     lastData = response.data;
-    showResult(lastData);
-    setStatus("Done.");
+    // Send data to the active tab to display a persistent in-page panel
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_PERSISTENT_PANEL', data: lastData });
+      setStatus('Panel opened in page.');
+      // close the popup so the panel remains in-page
+      window.close();
+      return;
+    } catch (e) {
+      // If the content script isn't available, fallback to popup rendering
+      showResult(lastData);
+      setStatus('Done.');
+    }
     downloadJsonBtn.disabled = false;
     saveNotionBtn.disabled = false;
   } catch (error) {
@@ -80,8 +171,31 @@ async function requestData() {
 
 function downloadJson() {
   if (!lastData) return;
+  syncEditedProfileToLastData();
   const filename = "ln-user-extract-profile.json";
-  downloadFile(filename, JSON.stringify(lastData, null, 2), "application/json");
+  const content = JSON.stringify(lastData, null, 2);
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  // Prefer using chrome.downloads with saveAs:true to prompt for location.
+  try {
+    if (chrome?.downloads?.download) {
+      chrome.downloads.download({ url, filename, saveAs: true }, (downloadId) => {
+        // revoke objectURL shortly after the download is created
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        if (chrome.runtime.lastError) {
+          // fallback to anchor-based download if downloads API failed
+          downloadFile(filename, content, "application/json");
+        }
+      });
+      return;
+    }
+  } catch (err) {
+    // ignore and fallback
+  }
+
+  // Fallback for environments without chrome.downloads
+  downloadFile(filename, content, "application/json");
 }
 
 async function loadNotionSettings() {
@@ -173,6 +287,9 @@ async function connectToNotion() {
 async function saveToNotion() {
   if (!lastData) return;
 
+  // synchronize any user edits in the UI back into the data object
+  syncEditedProfileToLastData();
+
   // Use server client_token exclusively
   const stored = await chrome.storage.local.get(NOTION_STORAGE_KEY);
   const settings = stored[NOTION_STORAGE_KEY] || {};
@@ -201,11 +318,71 @@ async function saveToNotion() {
   }
 }
 
+function syncEditedProfileToLastData() {
+  if (!lastData) return;
+
+  // top-level fields
+  ['url','email','name','headline','location','about','notes'].forEach((k) => {
+    const el = outputEl.querySelector(`[data-key="${k}"]`);
+    if (el) lastData[k] = el.innerText.trim();
+  });
+
+  // experience entries
+  const expItems = outputEl.querySelectorAll('.exp-item');
+  if (expItems && expItems.length) {
+    lastData.experience = lastData.experience || [];
+    expItems.forEach((item) => {
+      const idx = Number(item.getAttribute('data-exp-index'));
+      lastData.experience[idx] = lastData.experience[idx] || {};
+      const company = item.querySelector('[data-exp-field="company"]')?.innerText.trim() || '';
+      const title = item.querySelector('[data-exp-field="title"]')?.innerText.trim() || '';
+      const content = item.querySelector('[data-exp-field="content"]')?.innerText.trim() || '';
+      const loc = item.querySelector('[data-exp-field="location"]')?.innerText.trim() || '';
+      lastData.experience[idx]['Company name'] = company;
+      lastData.experience[idx].Title = title;
+      lastData.experience[idx].Content = content;
+      lastData.experience[idx].Location = loc;
+    });
+  }
+
+  // featured
+  const featuredItems = outputEl.querySelectorAll('[data-featured-index]');
+  if (featuredItems && featuredItems.length) {
+    lastData.featured = lastData.featured || [];
+    featuredItems.forEach((item) => {
+      const idx = Number(item.getAttribute('data-featured-index'));
+      lastData.featured[idx] = lastData.featured[idx] || {};
+      const type = item.querySelector('[data-featured-field="type"]')?.innerText.trim() || '';
+      const content = item.querySelector('[data-featured-field="content"]')?.innerText.trim() || '';
+      lastData.featured[idx]['Post type'] = type;
+      lastData.featured[idx].Content = content;
+    });
+  }
+
+  // activity
+  const activityItems = outputEl.querySelectorAll('[data-activity-index]');
+  if (activityItems && activityItems.length) {
+    lastData.activity = lastData.activity || [];
+    activityItems.forEach((item) => {
+      const idx = Number(item.getAttribute('data-activity-index'));
+      lastData.activity[idx] = lastData.activity[idx] || {};
+      const type = item.querySelector('[data-activity-field="type"]')?.innerText.trim() || '';
+      const content = item.querySelector('[data-activity-field="content"]')?.innerText.trim() || '';
+      lastData.activity[idx]['Post type'] = type;
+      lastData.activity[idx].Content = content;
+    });
+  }
+}
+
 // Wire up UI controls
 extractBtn.addEventListener("click", requestData);
 downloadJsonBtn.addEventListener("click", downloadJson);
 saveNotionBtn.addEventListener("click", saveToNotion);
 connectNotionBtn.addEventListener('click', connectToNotion);
 notionDbSelect.addEventListener('change', (e) => { persistSelectedDatabase(e.target.value); });
+
+if (persistentCloseBtn) {
+  persistentCloseBtn.addEventListener('click', () => window.close());
+}
 
 loadNotionSettings();

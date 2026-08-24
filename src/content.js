@@ -322,6 +322,245 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  const SERVER_ORIGIN = 'http://localhost:3000';
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  /* ------------------ In-page persistent panel ------------------ */
+  function createStyle() {
+    const id = 'ln-panel-styles';
+    if (document.getElementById(id)) return;
+    const css = `
+      #ln-persistent-panel { position: fixed; right: 18px; top: 60px; width: 420px; max-height: 80vh; overflow: auto; z-index: 2147483647; background: #fff; color: #000; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      #ln-persistent-panel .panel-header { padding: 10px 12px; background: #001; color: #fff; position: sticky; top: 0; display:flex; align-items:center; justify-content:space-between; }
+      #ln-persistent-panel .panel-body { padding: 12px; }
+      #ln-persistent-panel .panel-controls { display:flex; gap:8px; margin-bottom:8px; }
+      #ln-persistent-panel .field { margin-bottom:8px; }
+      #ln-persistent-panel .field h4 { margin:0 0 4px; font-size:12px; }
+      #ln-persistent-panel [contenteditable] { padding:6px 8px; border:1px solid #d0d0d0; border-radius:6px; background:#fafafa; }
+      #ln-persistent-panel .close-x { background:transparent; border:0; color:#fff; font-size:18px; cursor:pointer; }
+    `;
+    const s = document.createElement('style');
+    s.id = id;
+    s.textContent = css;
+    document.head.appendChild(s);
+  }
+
+  function createOrUpdatePanel(data) {
+    createStyle();
+    let panel = document.getElementById('ln-persistent-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'ln-persistent-panel';
+      panel.innerHTML = `
+        <div class="panel-header"><div>LN User Extract</div><button class="close-x" aria-label="Close">×</button></div>
+        <div class="panel-body">
+          <div class="panel-controls">
+            <button id="ln-panel-extract">Extract</button>
+            <button id="ln-panel-copy">Copy all</button>
+            <button id="ln-panel-save">Save profile</button>
+            <button id="ln-panel-save-notion">Save to Notion</button>
+          </div>
+          <div id="ln-panel-output"></div>
+        </div>
+      `;
+      document.body.appendChild(panel);
+
+      panel.querySelector('.close-x').addEventListener('click', () => panel.remove());
+      panel.querySelector('#ln-panel-extract').addEventListener('click', async () => {
+        const res = await extractProfileData();
+        renderPanelOutput(res);
+      });
+      panel.querySelector('#ln-panel-save').addEventListener('click', () => {
+        // request background to download with saveAs
+        syncPanelEditsToData();
+        const out = window.lnPanelCurrentData || {};
+        chrome.runtime.sendMessage({ type: 'DOWNLOAD_FILE', filename: 'ln-user-extract-profile.json', content: JSON.stringify(out, null, 2) });
+      });
+      panel.querySelector('#ln-panel-copy').addEventListener('click', async () => {
+        syncPanelEditsToData();
+        const out = window.lnPanelCurrentData || {};
+        const formatted = formatDataForCopy(out);
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(formatted);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = formatted;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+          // save to local storage as cache
+          try {
+            chrome.storage.local.set({ ln_copy_cache: { content: formatted, timestamp: Date.now() } });
+          } catch (e) {
+            // ignore storage failure
+          }
+          alert('Profile copied to clipboard and saved to copy cache.');
+        } catch (err) {
+          alert('Copy failed: ' + (err && err.message ? err.message : err));
+        }
+      });
+      panel.querySelector('#ln-panel-save-notion').addEventListener('click', async () => {
+        syncPanelEditsToData();
+        const out = window.lnPanelCurrentData || {};
+        // try to get token from storage and POST to server
+        chrome.storage.local.get('notionSettings', async (stored) => {
+          const settings = stored['notionSettings'] || {};
+          const token = settings.client_token;
+          const db = settings.databaseId;
+          if (!token) return alert('Not connected to Notion');
+          if (!db) return alert('No Notion database selected');
+          try {
+            const res = await fetch(`${SERVER_ORIGIN}/api/save-profile`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ notion_database_id: db, profile: out }) });
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.error || 'Save failed');
+            alert('Saved to Notion');
+          } catch (err) { alert('Notion save failed: ' + err.message); }
+        });
+      });
+    }
+
+    // render output
+    renderPanelOutput(data);
+  }
+
+  function renderPanelOutput(data) {
+    window.lnPanelCurrentData = data || {};
+    const out = document.getElementById('ln-panel-output');
+    if (!out) return;
+    const make = (label, key, value) => `<div class="field"><h4>${label}</h4><div data-key="${key}" contenteditable>${escapeHtml(value || '')}</div></div>`;
+    let html = '';
+    html += make('URL','url', data.url);
+    html += make('Email','email', data.email || '');
+    html += make('Name','name', data.name);
+    html += make('Headline','headline', data.headline);
+    html += make('Location','location', data.location);
+    html += `<div class="field"><h4>About</h4><div data-key="about" contenteditable>${escapeHtml(data.about || '')}</div></div>`;
+    html += `<h4>Experience</h4>`;
+    if (Array.isArray(data.experience) && data.experience.length) {
+      data.experience.forEach((e, idx) => {
+        html += `<div class="field"><div><strong>${escapeHtml(e['Company name'] || '')} - ${escapeHtml(e.Title || '')}</strong></div><div data-exp-index="${idx}">`;
+        html += `<div contenteditable data-exp-field="company">${escapeHtml(e['Company name'] || '')}</div>`;
+        html += `<div contenteditable data-exp-field="title">${escapeHtml(e.Title || '')}</div>`;
+        html += `<div contenteditable data-exp-field="content">${escapeHtml(e.Content || '')}</div>`;
+        html += `<div contenteditable data-exp-field="location">${escapeHtml(e.Location || '')}</div>`;
+        html += `</div></div>`;
+      });
+    }
+
+    // Featured
+    html += `<h4>Featured</h4>`;
+    if (Array.isArray(data.featured) && data.featured.length) {
+      data.featured.forEach((f, idx) => {
+        html += `<div class="field" data-featured-index="${idx}"><div contenteditable data-featured-field="type">${escapeHtml(f['Post type'] || '')}</div><div contenteditable data-featured-field="content">${escapeHtml(f.Content || '')}</div></div>`;
+      });
+    }
+
+    // Activity
+    html += `<h4>Activity</h4>`;
+    if (Array.isArray(data.activity) && data.activity.length) {
+      data.activity.forEach((a, idx) => {
+        html += `<div class="field" data-activity-index="${idx}"><div contenteditable data-activity-field="type">${escapeHtml(a['Post type'] || '')}</div><div contenteditable data-activity-field="content">${escapeHtml(a.Content || '')}</div></div>`;
+      });
+    }
+
+    // Notes
+    html += `<h4>Notes</h4>`;
+    html += `<div class="field"><div data-key="notes" contenteditable>${escapeHtml(data.notes || '')}</div></div>`;
+
+    out.innerHTML = html;
+  }
+
+  function formatDataForCopy(data) {
+    const lines = [];
+    lines.push(`URL: ${data.url || ''}`);
+    lines.push(`Name: ${data.name || ''}`);
+    lines.push(`Headline: ${data.headline || ''}`);
+    lines.push(`Location: ${data.location || ''}`);
+    lines.push(`About: ${data.about || ''}`);
+    lines.push('Experience:');
+    if (Array.isArray(data.experience) && data.experience.length) {
+      data.experience.forEach((e) => {
+        const company = e['Company name'] || '';
+        const title = e.Title || '';
+        lines.push(`${company} - ${title}:`);
+        if (e.Content) lines.push(`${e.Content}`);
+        if (e.Location) lines.push(`Location: ${e.Location}`);
+        lines.push('');
+      });
+    }
+    lines.push('Featured:');
+    if (Array.isArray(data.featured) && data.featured.length) {
+      data.featured.forEach((f) => {
+        lines.push(`${f['Post type'] || ''}: ${f.Content || ''}`);
+      });
+    }
+    lines.push('Activity:');
+    if (Array.isArray(data.activity) && data.activity.length) {
+      data.activity.forEach((a) => {
+        lines.push(`${a['Post type'] || ''}: ${a.Content || ''}`);
+      });
+    }
+    lines.push(`Notes: ${data.notes || ''}`);
+    return lines.join('\n');
+  }
+
+  function syncPanelEditsToData() {
+    const data = window.lnPanelCurrentData || {};
+    const outEl = document.getElementById('ln-panel-output');
+    if (!outEl) return data;
+    const topKeys = ['url','email','name','headline','location','about','notes'];
+    topKeys.forEach(k => {
+      const el = outEl.querySelector(`[data-key="${k}"]`);
+      if (el) data[k] = el.innerText.trim();
+    });
+    const expEls = outEl.querySelectorAll('[data-exp-index]');
+    if (expEls.length) {
+      data.experience = data.experience || [];
+      expEls.forEach((container) => {
+        const idx = Number(container.getAttribute('data-exp-index'));
+        data.experience[idx] = data.experience[idx] || {};
+        data.experience[idx]['Company name'] = (container.querySelector('[data-exp-field="company"]')?.innerText || '').trim();
+        data.experience[idx].Title = (container.querySelector('[data-exp-field="title"]')?.innerText || '').trim();
+        data.experience[idx].Content = (container.querySelector('[data-exp-field="content"]')?.innerText || '').trim();
+        data.experience[idx].Location = (container.querySelector('[data-exp-field="location"]')?.innerText || '').trim();
+      });
+    }
+    const featuredEls = outEl.querySelectorAll('[data-featured-index]');
+    if (featuredEls.length) {
+      data.featured = data.featured || [];
+      featuredEls.forEach((container) => {
+        const idx = Number(container.getAttribute('data-featured-index'));
+        data.featured[idx] = data.featured[idx] || {};
+        data.featured[idx]['Post type'] = (container.querySelector('[data-featured-field="type"]')?.innerText || '').trim();
+        data.featured[idx].Content = (container.querySelector('[data-featured-field="content"]')?.innerText || '').trim();
+      });
+    }
+    const activityEls = outEl.querySelectorAll('[data-activity-index]');
+    if (activityEls.length) {
+      data.activity = data.activity || [];
+      activityEls.forEach((container) => {
+        const idx = Number(container.getAttribute('data-activity-index'));
+        data.activity[idx] = data.activity[idx] || {};
+        data.activity[idx]['Post type'] = (container.querySelector('[data-activity-field="type"]')?.innerText || '').trim();
+        data.activity[idx].Content = (container.querySelector('[data-activity-field="content"]')?.innerText || '').trim();
+      });
+    }
+    window.lnPanelCurrentData = data;
+    return data;
+  }
+
+
   async function extractProfileData() {
     expandSection("About");
     expandSection("Experience");
@@ -380,6 +619,17 @@
       extractProfileData()
         .then((data) => sendResponse({ ok: true, data }))
         .catch((error) => sendResponse({ ok: false, error: error?.message || "Failed to extract profile data." }));
+      return true;
+    }
+
+    if (message?.type === 'SHOW_PERSISTENT_PANEL') {
+      try {
+        // Create or update a floating persistent panel on the page
+        createOrUpdatePanel(message.data || {});
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err?.message || 'Failed to show panel' });
+      }
       return true;
     }
 
